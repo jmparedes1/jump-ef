@@ -1,1 +1,34 @@
-const CACHE='jump-ef-v1';const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.method==='GET'&&new URL(e.request.url).origin===self.location.origin)e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))});
+'use strict';
+
+const CACHE = 'jump-ef-v2';
+const ASSETS = [
+  './index.html', './style.css?v=2', './detector.js?v=2', './app.js?v=2',
+  './manifest.webmanifest', './icon-192.png', './icon-512.png'
+];
+const assetURLs = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(ASSETS.map(path => new Request(path, { cache: 'reload' })));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('jump-ef-v') && key !== CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET' || !request.url.startsWith(self.registration.scope)) return;
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).catch(async () => (await caches.open(CACHE)).match('./index.html')));
+  } else if (assetURLs.has(request.url)) {
+    event.respondWith((async () => (await (await caches.open(CACHE)).match(request)) || fetch(request))());
+  }
+});
