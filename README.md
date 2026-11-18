@@ -25,3 +25,7 @@ Sirve la raíz mediante un servidor HTTP local para usar la demo. El sensor real
 La vista inicial reúne altura, progreso, avisos y controles de medición. El historial está en una pestaña aparte. El selector de saltos queda a mano y los ajustes de protocolo, alumno y grupo están en **Ajustes de la serie**. En **Señal y tiempo de vuelo** se pueden consultar los datos del último salto. El CSV incorpora la versión del detector para identificar las medidas de esta actualización.
 
 La detección exige una señal estable y continua antes de armar cada intento. Una recuperación breve durante el vuelo se descarta y el aterrizaje se acepta tras observar un impacto y al menos 70 ms de señal sostenida por encima del umbral de recuperación. Se conserva la marca temporal del primer cruce y los 70 ms no se suman al tiempo de vuelo. Estos umbrales son heurísticos y necesitan contraste con saltos reales antes de usar la altura como medida de evaluación.
+
+## v4 · Oposiciones
+
+El modo Oposiciones es el predeterminado. Estima la altura en centímetros a partir del tiempo de vuelo. Admite un impulso e impacto más suaves y un vuelo de al menos 90 ms. La señal debe volver de forma sostenida al nivel de apoyo. Los umbrales se probaron con datos sintéticos. Para conocer el error real del iPhone, contrasta los mismos saltos con una referencia. Si las bases miden diferencia entre alcance de pie y alcance saltando, anota esa marca por separado.

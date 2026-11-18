@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const STORAGE_KEY = 'jumpEFResults';
 const V1_MARK = 'legacy';
 const PROTOCOLS = {
+  OPS: 'Pies quietos en la salida. Tras el aviso, realiza un salto vertical sin carrera ni pasos previos. Usa los brazos según las bases de tu prueba.',
   CMJ: 'De pie con las manos en la cintura. Tras el aviso, flexiona y salta en un solo movimiento.',
   SJ: 'Mantén la semisentadilla con las manos en la cintura. Tras el aviso, salta sin bajar de nuevo.',
   ABK: 'De pie con los brazos libres. Tras el aviso, acompaña el salto con el balanceo de brazos.'
@@ -283,7 +284,7 @@ function tick(now) {
   series.state = 'ready';
   series.since = now;
   series.deadline = now + 14000;
-  series.detector = new JumpDetector(baseline);
+  series.detector = new JumpDetector(baseline, series.protocol === 'OPS');
   series.detector.sample(samples.at(-1).t, samples.at(-1).value);
   beep(890);
   updateState('¡Salta!', series.demo ? 'Reproduciendo una señal de ejemplo.' : 'Salta cuando estés listo.', 'ready');
@@ -298,7 +299,7 @@ function saveJump(result) {
   const { demo, id: session, athlete, group, protocol } = series;
   const record = {
     ...measurement, id: newId(), date: new Date().toISOString(), session,
-    athlete, group, protocol, attempt: series.results.length + 1, detector: 3
+    athlete, group, protocol, attempt: series.results.length + 1, detector: 4
   };
   trace = { samples: samples.filter(p => p.t >= takeoff - 480), takeoff, landing, demo, hz: measurement.hz };
   series.results.push(record);

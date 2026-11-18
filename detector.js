@@ -11,9 +11,13 @@ function crossing(previous, current, level) {
 }
 
 class JumpDetector {
-  constructor(baseline) {
+  constructor(baseline, standing = false) {
     this.baseline = baseline;
-    this.lowLevel = baseline * 0.36;
+    this.lowLevel = baseline * (standing ? 0.50 : 0.36);
+    this.impulseDelta = standing ? 1.0 : 2.1;
+    this.impactDelta = standing ? 0.7 : 1.5;
+    this.minimumFlight = standing ? 0.09 : 0.12;
+    this.minimumLowTime = standing ? 25 : 34;
     this.endLevel = baseline * 0.64;
     this.reset();
   }
@@ -30,10 +34,10 @@ class JumpDetector {
   sample(t, value) {
     const current = { t, value };
     const previous = this.previous;
+    if (previous && t <= previous.t) return null;
     this.previous = current;
     if (!previous) return null;
     const dt = t - previous.t;
-    if (dt <= 0) return null;
     if (dt > MAX_SAMPLE_GAP) {
       const interrupted = this.takeoff !== null;
       this.reset();
@@ -41,7 +45,7 @@ class JumpDetector {
     }
 
     if (this.takeoff === null) {
-      if (value >= this.baseline + 2.1) this.impulse = t;
+      if (value >= this.baseline + this.impulseDelta) this.impulse = t;
       if (this.impulse !== null && t - this.impulse <= 800 && value < this.lowLevel && previous.value >= this.lowLevel) {
         this.takeoff = crossing(previous, current, this.lowLevel);
         this.intervals.push(dt);
@@ -52,7 +56,7 @@ class JumpDetector {
     this.intervals.push(dt);
     if (!this.inFlight) {
       if (value >= this.lowLevel) this.reset();
-      else if (t - this.takeoff >= 34) this.inFlight = true;
+      else if (t - this.takeoff >= this.minimumLowTime) this.inFlight = true;
       return null;
     }
 
@@ -65,7 +69,7 @@ class JumpDetector {
     if (this.landing === null) {
       this.landing = crossing(previous, current, this.endLevel);
     }
-    this.impact ||= value >= this.baseline + 1.5;
+    this.impact ||= value >= this.baseline + this.impactDelta;
     const landedFor = t - this.landing;
     if (!this.impact) {
       return landedFor > IMPACT_WAIT_MS ? { error: 'No se confirmó el impacto de aterrizaje.' } : null;
@@ -74,7 +78,7 @@ class JumpDetector {
     if (landedFor < LANDING_CONFIRM_MS) return null;
 
     const flight = (this.landing - this.takeoff) / 1000;
-    if (flight < 0.12 || flight > 0.95) return { error: 'Tiempo de vuelo fuera del intervalo de detección.' };
+    if (flight < this.minimumFlight || flight > 0.95) return { error: 'Tiempo de vuelo fuera del intervalo de detección.' };
     const hz = 1000 * this.intervals.length / this.intervals.reduce((sum, dt) => sum + dt, 0);
     const gap = Math.max(...this.intervals);
     return {
