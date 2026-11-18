@@ -102,3 +102,46 @@ footer { color: var(--muted); display: flex; justify-content: space-between; pad
   .brand-mark { width: 32px; height: 32px; }
   .history li { gap: 6px; }
 }
+
+/* Vista de medición para uso de pie en el gimnasio. */
+main { max-width: 780px; padding-top: calc(12px + env(safe-area-inset-top)); }
+.header { padding-bottom: 10px; }
+.header nav { gap: 5px; }
+.header nav button { padding-inline: 10px; border-color: transparent; background: transparent; color: var(--muted); }
+.header nav button[aria-pressed="true"] { border-color: var(--line); background: var(--card); color: var(--accent); }
+.gym-heading { margin-bottom: 10px; }
+#medicion { margin-top: 18px; }
+.gym-board { padding: clamp(14px, 3vw, 24px); }
+.gym-board > .section-head { margin-bottom: 0; }
+.gym-board .height { justify-content: center; min-height: 0; margin: 2px 0; }
+.gym-board .height strong { font-size: clamp(4.5rem, 19vw, 9rem); line-height: 1; }
+.gym-board .height span { font-size: clamp(1.05rem, 5vw, 1.65rem); }
+.gym-board .context { text-align: center; margin: 4px 0 10px; min-height: 1.2em; }
+.gym-stats { text-align: center; padding: 8px 0; }
+.gym-stats dd { font-size: clamp(1rem, 5vw, 1.4rem); color: var(--accent); }
+.gym-status { text-align: center; border: 1px solid var(--line); margin-top: 5px; padding: 8px 10px; }
+.gym-status strong { display: block; color: var(--accent); font-size: clamp(1.2rem, 5vw, 1.85rem); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.gym-status[data-stage="ready"] { background: var(--accent); border-color: var(--accent); color: #15200c; }
+.gym-status[data-stage="ready"] strong { color: inherit; font-size: clamp(1.65rem, 8vw, 2.5rem); }
+.gym-status[data-stage="pause"] strong { color: #ffe09a; }
+.measure-actions { margin-top: 9px; }
+.measure-actions button { width: 100%; min-height: 54px; font-size: 1.12rem; }
+.measure-actions #stop { border-color: #7c5757; }
+.gym-options { margin-top: 9px; }
+.quick-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 2px; color: var(--muted); }
+.quick-select select { width: auto; min-width: 76px; font-weight: 720; }
+.gym-details { margin-top: 0; padding: 0 2px; }
+.gym-details > summary { min-height: 44px; padding: 11px 0; }
+.gym-details[open] { padding-bottom: 12px; }
+.gym-details #demo { margin-top: 10px; }
+.signal-facts { margin-top: 10px; }
+.setup-fields { grid-template-columns: 1.3fr 1fr 1fr; }
+@media (max-width: 490px) {
+  .setup-fields { grid-template-columns: 1fr 1fr; }
+  .setup-fields label:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 350px) {
+  .header nav button { padding-inline: 7px; font-size: .8rem; }
+}
+
+input:not([type=checkbox]), select { font-size: 1rem; }

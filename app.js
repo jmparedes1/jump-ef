@@ -57,8 +57,9 @@ function saveRecords(next) {
   }
 }
 
-function updateState(phase, message) {
-  $('phase').textContent = phase;
+function updateState(phase, message, stage = 'idle') {
+  $('phase-panel').dataset.stage = stage;
+  if ($('phase').textContent !== phase) $('phase').textContent = phase;
   if ($('status').textContent !== message) $('status').textContent = message;
 }
 
@@ -73,6 +74,10 @@ function updateControls() {
   $('demo').hidden = Boolean(series);
   $('stop').hidden = !series;
   $('settings').disabled = Boolean(series);
+  $('target').disabled = Boolean(series);
+  $('nav-history').disabled = Boolean(series);
+  $('nav-history').title = series ? 'Disponible al terminar la serie' : '';
+  $('demo').disabled = requesting;
 }
 
 function updateAttempt() {
@@ -181,7 +186,9 @@ function startSeries(demo = false) {
     protocol: $('protocol').value, athlete: $('athlete').value.trim(), group: $('group').value.trim()
   };
   $('series-summary').hidden = true;
-  trace = null;
+  $('setup-details').open = false;
+  $('help-details').open = false;
+  clearResult(demo ? 'Demo con señal simulada' : 'Esperando el primer salto');
   if (demo) {
     feed = 'demo';
     samples = [];
@@ -189,6 +196,7 @@ function startSeries(demo = false) {
   }
   updateControls();
   updateAttempt();
+  $('stop').focus({ preventScroll: true });
   tick(started);
   keepAwake(series);
 }
@@ -216,16 +224,19 @@ function addSample(t, value) {
   } else if (result) {
     saveJump(result);
   } else if (series.detector.inFlight) {
-    updateState('En vuelo', 'Esperando el aterrizaje.');
+    updateState('En vuelo', 'Esperando el aterrizaje.', 'flight');
   }
 }
 
 function baselineAt(now) {
   const window = samples.filter(sample => sample.t >= now - 650);
   if (window.length < 8 || window.at(-1).t - window[0].t < 390 || now - window.at(-1).t > 100) return null;
-  const values = window.map(sample => sample.value);
-  const baseline = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const stable = Math.max(...values) - Math.min(...values) <= 1.6;
+  const interrupted = window.some((sample, index) => index > 0 && sample.t - window[index - 1].t > 50);
+  if (interrupted) return null;
+  const values = window.map(sample => sample.value).sort((a, b) => a - b);
+  const middle = Math.floor(values.length / 2);
+  const baseline = (values[middle] + values[Math.floor((values.length - 1) / 2)]) / 2;
+  const stable = values.at(-1) - values[0] <= 1.6;
   return stable && Math.abs(baseline - GRAVITY) <= 2 ? baseline : null;
 }
 
@@ -247,7 +258,10 @@ function tick(now) {
     return;
   }
   if (series.state === 'pause') {
-    if (now < series.deadline) return;
+    if (now < series.deadline) {
+      updateState('Descanso · ' + Math.ceil((series.deadline - now) / 1000), series.pauseMessage, 'pause');
+      return;
+    }
     series.state = 'countdown';
     series.deadline = now + 3000;
   }
@@ -255,7 +269,7 @@ function tick(now) {
   if (remaining > 0) {
     if (remaining !== series.displayCount) {
       series.displayCount = remaining;
-      updateState('Preparación · ' + remaining, 'Mantén el iPhone quieto. Salta al aviso.');
+      updateState('Prepárate · ' + remaining, 'Mantén el iPhone quieto. Salta al aviso.', 'countdown');
       beep(530);
     }
     return;
@@ -266,14 +280,13 @@ function tick(now) {
     else updateState('Calibrando', 'Mantén el iPhone quieto para que pueda medirse el reposo.');
     return;
   }
-  trace = null;
   series.state = 'ready';
   series.since = now;
   series.deadline = now + 14000;
   series.detector = new JumpDetector(baseline);
   series.detector.sample(samples.at(-1).t, samples.at(-1).value);
   beep(890);
-  updateState('¡Salta!', series.demo ? 'Reproduciendo una señal de ejemplo.' : 'Salta cuando estés listo.');
+  updateState('¡Salta!', series.demo ? 'Reproduciendo una señal de ejemplo.' : 'Salta cuando estés listo.', 'ready');
 }
 
 function newId() {
@@ -285,12 +298,16 @@ function saveJump(result) {
   const { demo, id: session, athlete, group, protocol } = series;
   const record = {
     ...measurement, id: newId(), date: new Date().toISOString(), session,
-    athlete, group, protocol, attempt: series.results.length + 1
+    athlete, group, protocol, attempt: series.results.length + 1, detector: 3
   };
   trace = { samples: samples.filter(p => p.t >= takeoff - 480), takeoff, landing, demo, hz: measurement.hz };
   series.results.push(record);
   updateAttempt();
   showResult(record, demo);
+  const { best, mean } = summarize(series.results);
+  $('series-best').textContent = readable(best) + ' cm';
+  $('series-mean').textContent = readable(mean) + ' cm';
+  $('series-summary').hidden = false;
   announce(record.cm);
   if (!demo) {
     records.push(record);
@@ -309,19 +326,13 @@ function prepareNext(message) {
   series.state = 'pause';
   series.deadline = performance.now() + 4000;
   series.displayCount = null;
-  updateState('Pausa', message);
+  series.pauseMessage = message;
+  tick(performance.now());
 }
 
 function endSeries(phase, message) {
   if (!series) return;
-  const { results, demo } = series;
-  if (results.length) {
-    const { best, mean } = summarize(results);
-    $('series-summary').textContent = (demo ? 'Demo' : 'Serie') + ' · Mejor ' +
-      readable(best) + ' cm · Media ' + readable(mean) + ' cm · ' + results.length +
-      (results.length === 1 ? ' salto' : ' saltos');
-    $('series-summary').hidden = false;
-  }
+  const { demo } = series;
   clearInterval(demoTimer);
   demoTimer = null;
   wakeLock?.release().catch(() => {});
@@ -337,6 +348,7 @@ function endSeries(phase, message) {
   }
   updateControls();
   updateState(phase, message);
+  if (document.activeElement === $('stop')) (feed === 'live' ? $('start') : $('activate')).focus({ preventScroll: true });
 }
 
 function showResult(record, demo = false) {
@@ -428,16 +440,18 @@ function historyRow(record) {
   return row;
 }
 
-function restoreLastResult() {
+function clearResult(message = 'Coloca el iPhone en un cinturón ajustado.') {
   trace = null;
   displayedRecord = null;
-  if (records.length) {
-    showResult(records.at(-1));
-    return;
-  }
-  $('result-title').textContent = 'Último salto';
+  $('result-title').textContent = 'Altura estimada';
   for (const id of ['height', 'flight', 'quality']) $(id).textContent = '—';
-  $('result-context').textContent = 'Altura estimada a partir del tiempo de vuelo';
+  $('result-context').textContent = message;
+  drawSoon();
+}
+
+function restoreLastResult() {
+  clearResult();
+  if (records.length) showResult(records.at(-1));
 }
 
 function exportCsv() {
@@ -450,9 +464,10 @@ function exportCsv() {
   const rows = visibleRecords.map(row => [
     safeText(row.date), safeText(row.group), safeText(row.athlete), safeText(row.protocol),
     safeText(row.session), row.attempt || '', decimal(row.cm, 2), decimal(row.flight, 3),
-    decimal(row.hz, 1), decimal(row.gap, 1), safeText(row.quality)
+    decimal(row.hz, 1), decimal(row.gap, 1), safeText(row.quality),
+    row.detector || ''
   ].join(';'));
-  const header = 'fecha;grupo;alumno;protocolo;serie;intento;altura_cm;vuelo_s;frecuencia_hz;intervalo_max_ms;muestreo';
+  const header = 'fecha;grupo;alumno;protocolo;serie;intento;altura_cm;vuelo_s;frecuencia_hz;intervalo_max_ms;muestreo;version_detector';
   const blob = new Blob(['\ufeff' + [header, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -528,7 +543,7 @@ function plot(id, data, options) {
 }
 
 function drawSoon() {
-  if (graphPending) return;
+  if (graphPending || (!$('signal-details').open && $('historial').hidden)) return;
   graphPending = true;
   requestAnimationFrame(() => {
     graphPending = false;
@@ -536,14 +551,14 @@ function drawSoon() {
     const end = (data.at(-1)?.t ?? 0) + (trace ? 35 : 0);
     const start = end - (trace ? Math.max(900, end - data[0].t) : 5000);
     const ceiling = Math.max(20, Math.ceil(Math.max(0, ...data.map(p => p.value)) / 10) * 10);
-    plot('signal', data, { min: 0, max: ceiling, start, end, ticks: [0, ceiling / 2, ceiling], markers: trace, unit: 'm/s²' });
+    if ($('signal-details').open && !$('medicion').hidden) plot('signal', data, { min: 0, max: ceiling, start, end, ticks: [0, ceiling / 2, ceiling], markers: trace, unit: 'm/s²' });
     const span = data.length > 1 ? data.at(-1).t - data[0].t : 0;
     const hz = trace?.hz || (span > 0 ? 1000 * (data.length - 1) / span : 0);
     $('rate').textContent = hz ? readable(hz, 0) + ' Hz' : '— Hz';
     $('signal-caption').textContent = trace
       ? (trace.demo ? 'Señal simulada' : 'Último intento') + ' · Área sombreada: tiempo de vuelo'
       : 'Magnitud de la aceleración con gravedad · m/s²';
-    if (trend.length) {
+    if (trend.length && !$('historial').hidden) {
       const min = Math.max(0, Math.floor((Math.min(...trend) - 1) / 5) * 5);
       const max = Math.ceil((Math.max(...trend) + 1) / 5) * 5;
       plot('trend', trend.map((value, t) => ({ t, value })), {
@@ -553,6 +568,18 @@ function drawSoon() {
   });
 }
 
+function showHistory(open) {
+  if (series && open) return;
+  $('medicion').hidden = open;
+  $('historial').hidden = !open;
+  $('nav-measure').setAttribute('aria-pressed', String(!open));
+  $('nav-history').setAttribute('aria-pressed', String(open));
+  drawSoon();
+}
+
+$('nav-measure').addEventListener('click', () => showHistory(false));
+$('nav-history').addEventListener('click', () => showHistory(true));
+$('signal-details').addEventListener('toggle', drawSoon);
 $('activate').addEventListener('click', activateSensor);
 $('start').addEventListener('click', () => startSeries());
 $('demo').addEventListener('click', () => startSeries(true));
@@ -560,7 +587,10 @@ $('stop').addEventListener('click', () => endSeries('Serie detenida', 'Puedes in
 $('protocol').addEventListener('change', () => {
   $('protocol-help').textContent = PROTOCOLS[$('protocol').value];
 });
-$('target').addEventListener('change', updateAttempt);
+$('target').addEventListener('change', () => {
+  $('series-summary').hidden = true;
+  updateAttempt();
+});
 for (const filter of ['filter-protocol', 'filter-group', 'filter-athlete']) {
   $(filter).addEventListener('change', () => {
     viewLimit = 15;

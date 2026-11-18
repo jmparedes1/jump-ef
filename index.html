@@ -9,49 +9,56 @@
   <meta name="apple-mobile-web-app-title" content="JUMP EF">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
   <title>JUMP EF | Salto vertical</title>
-  <script src="detector.js?v=2" defer></script>
-  <script src="app.js?v=2" defer></script>
+  <script src="detector.js?v=3" defer></script>
+  <script src="app.js?v=3" defer></script>
 </head>
 <body>
 <main>
   <header class="header">
     <div class="brand"><span class="brand-mark" aria-hidden="true">↗</span><h1>JUMP<span>EF</span></h1></div>
-    <nav aria-label="Secciones"><a href="#medicion">Medición</a><a href="#historial">Historial</a></nav>
+    <nav aria-label="Vistas">
+      <button id="nav-measure" type="button" aria-pressed="true" aria-controls="medicion">Gimnasio</button>
+      <button id="nav-history" type="button" aria-pressed="false" aria-controls="historial">Historial</button>
+    </nav>
   </header>
 
   <section id="medicion" aria-labelledby="measure-title">
-    <div class="section-head"><h2 id="measure-title">Salto vertical</h2><span id="sensor" class="pill" role="status">Sensor inactivo</span></div>
-    <div class="dashboard">
-      <article class="card result-card" aria-labelledby="result-title">
-        <h3 id="result-title">Último salto</h3>
-        <div class="height"><strong id="height">—</strong> <span>cm</span></div>
-        <dl class="facts">
-          <div><dt>Tiempo de vuelo</dt><dd id="flight">—</dd></div>
-          <div><dt>Muestreo del salto</dt><dd id="quality">—</dd></div>
-        </dl>
-        <p id="result-context" class="context">Altura estimada a partir del tiempo de vuelo</p>
-      </article>
-      <article class="card signal-card" aria-labelledby="signal-title">
-        <div class="section-head"><h3 id="signal-title">Señal del acelerómetro</h3><span class="pill" id="rate">— Hz</span></div>
-        <canvas id="signal" role="img" aria-label="Magnitud de la aceleración con gravedad en metros por segundo al cuadrado"></canvas>
-        <p id="signal-caption" class="caption">Magnitud de la aceleración con gravedad · m/s²</p>
-      </article>
+    <div class="section-head gym-heading"><h2 id="measure-title">Salto vertical</h2><span id="sensor" class="pill" role="status">Sensor inactivo</span></div>
+    <article class="card result-card gym-board" aria-labelledby="result-title">
+      <div class="section-head"><h3 id="result-title">Altura estimada</h3><strong id="attempt" class="pill">0 / 1 salto</strong></div>
+      <div class="height"><strong id="height">—</strong><span>cm</span></div>
+      <p id="result-context" class="context">Coloca el iPhone en un cinturón ajustado.</p>
+      <dl id="series-summary" class="facts gym-stats" hidden>
+        <div><dt>Mejor de la serie</dt><dd id="series-best">—</dd></div>
+        <div><dt>Media de la serie</dt><dd id="series-mean">—</dd></div>
+      </dl>
+      <div class="session-status gym-status" id="phase-panel" data-stage="idle" role="status">
+        <strong id="phase">En espera</strong>
+        <p id="status">Pulsa Activar sensor para empezar.</p>
+      </div>
+      <div class="actions measure-actions">
+        <button id="activate" class="primary">Activar sensor</button>
+        <button id="start" class="primary" hidden>Iniciar serie</button>
+        <button id="stop" hidden>Detener serie</button>
+      </div>
+    </article>
 
-      <div class="card session-card">
-        <div class="section-head"><h3>Configurar serie</h3><strong id="attempt" class="pill">0 / 1 saltos</strong></div>
-        <fieldset id="settings" class="settings">
+    <div class="gym-options">
+      <label class="quick-select">Saltos por serie<select id="target"><option>1</option><option>3</option><option>5</option></select></label>
+      <details id="setup-details" class="gym-details">
+        <summary>Ajustes de la serie</summary>
+        <fieldset id="settings">
           <legend class="sr-only">Ajustes de la serie</legend>
-          <div class="fields">
+          <div class="fields setup-fields">
             <label>Protocolo<select id="protocol">
               <option value="CMJ">CMJ · Contramovimiento</option>
               <option value="SJ">SJ · Desde semisentadilla</option>
               <option value="ABK">ABK · Con brazos</option>
             </select></label>
-            <label>Saltos<select id="target"><option>1</option><option>3</option><option>5</option></select></label>
-            <label><span>Alumno o código <small class="optional">(opcional)</small></span><input id="athlete" maxlength="50" autocomplete="off" placeholder="Ej. A12"></label>
-            <label><span>Grupo <small class="optional">(opcional)</small></span><input id="group" maxlength="35" autocomplete="off" placeholder="Ej. 4.º A"></label>
+            <label>Alumno o código<input id="athlete" maxlength="50" autocomplete="off" placeholder="Ej. A12"></label>
+            <label>Grupo<input id="group" maxlength="35" autocomplete="off" placeholder="Ej. 4.º A"></label>
           </div>
           <p id="protocol-help" class="caption"></p>
           <div class="options">
@@ -59,27 +66,31 @@
             <label class="check"><input id="voice" type="checkbox"> Leer resultado</label>
           </div>
         </fieldset>
-        <div class="session-status">
-          <strong id="phase">En espera</strong>
-          <p id="status" role="status">Fija el iPhone a la cintura y activa el acelerómetro.</p>
-        </div>
-        <div class="actions measure-actions">
-          <button id="activate" class="primary">Activar sensor</button>
-          <button id="start" class="primary" hidden>Iniciar serie</button>
-          <button id="stop" hidden>Detener</button>
-          <button id="demo">Probar demo</button>
-        </div>
-        <p id="series-summary" class="caption" hidden></p>
-        <details>
-          <summary>Colocación del iPhone y método</summary>
-          <p>Sujeta el iPhone firmemente a la cintura. Quédate quieto durante la cuenta atrás y salta al aviso. Para comparar intentos, mantén la misma colocación del móvil, el mismo protocolo y una postura similar al despegar y al aterrizar.</p>
-          <p>La altura estimada se obtiene mediante h = g × t² / 8. El muestreo describe la señal recibida. El método es experimental y requiere validación con saltos reales.</p>
-        </details>
-      </div>
+      </details>
+
+      <details id="signal-details" class="gym-details">
+        <summary>Señal y tiempo de vuelo</summary>
+        <article class="signal-card" aria-labelledby="signal-title">
+          <div class="section-head"><h3 id="signal-title">Señal del acelerómetro</h3><span class="pill" id="rate">— Hz</span></div>
+          <canvas id="signal" role="img" aria-label="Magnitud de la aceleración con gravedad en metros por segundo al cuadrado"></canvas>
+          <p id="signal-caption" class="caption">Magnitud de la aceleración con gravedad · m/s²</p>
+          <dl class="facts signal-facts">
+            <div><dt>Tiempo de vuelo</dt><dd id="flight">—</dd></div>
+            <div><dt>Muestreo del salto</dt><dd id="quality">—</dd></div>
+          </dl>
+        </article>
+      </details>
+
+      <details id="help-details" class="gym-details">
+        <summary>Cómo usarlo y probar la demo</summary>
+        <p>Sujeta el iPhone firmemente a la cintura. Quédate quieto durante la cuenta atrás y salta al aviso. Para comparar intentos, repite el protocolo y la colocación del móvil.</p>
+        <p>Altura estimada mediante h = g × t² / 8. El muestreo describe la señal recibida. El método requiere validación con saltos reales.</p>
+        <button id="demo" type="button">Probar demo</button>
+      </details>
     </div>
   </section>
 
-  <section id="historial" aria-labelledby="history-title">
+  <section id="historial" aria-labelledby="history-title" hidden>
     <div class="section-head"><h2 id="history-title">Historial</h2><button id="export">Exportar CSV</button></div>
     <div class="card history-card">
       <div class="fields filters">
@@ -102,7 +113,7 @@
       <p id="storage" class="caption" role="status">Los resultados se guardan en este dispositivo.</p>
     </div>
   </section>
-  <footer>JUMP EF <span>Medición experimental</span></footer>
+  <footer>JUMP EF <span>Estimación por tiempo de vuelo</span></footer>
 </main>
 </body>
 </html>

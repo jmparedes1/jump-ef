@@ -1,8 +1,8 @@
 'use strict';
 
-const CACHE = 'jump-ef-v2';
+const CACHE = 'jump-ef-v3';
 const ASSETS = [
-  './index.html', './style.css?v=2', './detector.js?v=2', './app.js?v=2',
+  './index.html', './style.css?v=3', './detector.js?v=3', './app.js?v=3',
   './manifest.webmanifest', './icon-192.png', './icon-512.png'
 ];
 const assetURLs = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));

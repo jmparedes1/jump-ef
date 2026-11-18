@@ -2,6 +2,8 @@
 
 const GRAVITY = 9.80665;
 const MAX_SAMPLE_GAP = 80;
+const LANDING_CONFIRM_MS = 70;
+const IMPACT_WAIT_MS = 140;
 
 function crossing(previous, current, level) {
   const fraction = (level - previous.value) / (current.value - previous.value);
@@ -20,6 +22,7 @@ class JumpDetector {
     this.impulse = null;
     this.takeoff = null;
     this.landing = null;
+    this.impact = false;
     this.inFlight = false;
     this.intervals = [];
   }
@@ -53,16 +56,22 @@ class JumpDetector {
       return null;
     }
 
-    if (this.landing === null && value >= this.endLevel && previous.value < this.endLevel) {
-      this.landing = crossing(previous, current, this.endLevel);
-    }
-    if (this.landing === null) {
+    if (value < this.endLevel) {
+      this.landing = null;
+      this.impact = false;
       return t - this.takeoff > 1000 ? { error: 'No se detectó el aterrizaje.' } : null;
     }
-    if (t - this.landing > 140 || value < this.lowLevel) {
-      return { error: 'No se confirmó el impacto de aterrizaje.' };
+
+    if (this.landing === null) {
+      this.landing = crossing(previous, current, this.endLevel);
     }
-    if (value < this.baseline + 1.5) return null;
+    this.impact ||= value >= this.baseline + 1.5;
+    const landedFor = t - this.landing;
+    if (!this.impact) {
+      return landedFor > IMPACT_WAIT_MS ? { error: 'No se confirmó el impacto de aterrizaje.' } : null;
+    }
+    // Confirm ground contact without moving the timestamp of the first threshold crossing.
+    if (landedFor < LANDING_CONFIRM_MS) return null;
 
     const flight = (this.landing - this.takeoff) / 1000;
     if (flight < 0.12 || flight > 0.95) return { error: 'Tiempo de vuelo fuera del intervalo de detección.' };
